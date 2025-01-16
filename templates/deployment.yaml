@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: comfyui-{{ .Values.name }}
+  namespace: {{ .Values.namespace | default "default" | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: comfyui-{{ .Values.name }}
+  template:
+    metadata:
+      labels:
+        app: comfyui-{{ .Values.name }}
+    spec:
+      {{- if .Values.nodeName }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName }}
+      {{- end }}
+      initContainers:
+      - name: setup-nfs-path
+        image: alpine:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /output/{{ .Values.name }}
+        volumeMounts:
+          - name: cui-output
+            mountPath: /output
+      containers:
+      - name: comfyui-{{ .Values.name }}-ctr
+        image: yanwk/comfyui-boot:cu124-megapak
+        command: ["/bin/sh", "-c", "sh /runner-scripts/entrypoint.sh; sleep infinity"] 
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8188
+        resources:
+          requests:
+            nvidia.com/gpu: 1
+          limits:
+            nvidia.com/gpu: 1
+        env:
+        - name: CLI_ARGS
+          value: "--output=/output"
+        volumeMounts:
+        - name: cui-output
+          mountPath: /output
+      volumes:
+      - name: cui-output
+        persistentVolumeClaim:
+          claimName: cui-output-{{ .Values.name }}-pvc
