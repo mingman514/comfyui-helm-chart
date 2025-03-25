@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: cui-output-{{ .Values.name }}-pv
+  name: cui-nfs-{{ .Values.name }}-pv
 spec:
   capacity:
     storage: {{ .Values.storageSize | default "20G" | quote }}
@@ -9,17 +9,18 @@ spec:
     - ReadWriteMany
   claimRef:
     namespace: {{ .Values.namespace | default "default" | quote }}
-    name: cui-output-{{ .Values.name }}-pvc
+    name: cui-nfs-{{ .Values.name }}-pvc
   persistentVolumeReclaimPolicy: Retain
+  hostPath:
   nfs:
     server: {{ .Values.nfs.server }}
-    path: {{ .Values.nfs.path }}/{{ .Values.name }}
+    path: {{ .Values.nfs.path }}
 
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: cui-output-{{ .Values.name }}-pvc
+  name: cui-nfs-{{ .Values.name }}-pvc
   namespace: {{ .Values.namespace | default "default" | quote }}
 spec:
   accessModes:

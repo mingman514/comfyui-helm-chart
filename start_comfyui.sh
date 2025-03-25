@@ -44,7 +44,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "Helm installation succeeded. Waiting for resources to be ready..."
+echo "Helm installation succeeded."
 
 # 리소스 준비 상태 확인
 WAIT_TIMEOUT=600  # 최대 대기 시간 (초)
@@ -61,32 +61,32 @@ if [ -z "$NAME_VALUE" ]; then
 fi
 
 # TODO: Pod에 Readiness Probe 추가 후에 Ready 여부로 판단 필요
-LABEL="app=comfyui-$NAME_VALUE"
+#LABEL="app=comfyui-$NAME_VALUE"
+#
+#while true; do
+#  # 특정 라벨을 가진 Pod의 Ready 상태 확인
+#  READY_COUNT=$(kubectl get pods --selector "$LABEL" --field-selector=status.phase=Running \
+#    -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' | grep -c "True")
+#  TOTAL_COUNT=$(kubectl get pods --selector "$LABEL" --no-headers 2>/dev/null | wc -l)
+#
+#  # 모든 Pod가 준비되었는지 확인
+#  if [ "$READY_COUNT" -eq "$TOTAL_COUNT" ] && [ "$TOTAL_COUNT" -gt 0 ]; then
+#    echo "All Pods with label $LABEL are ready."
+#    break
+#  fi
+#
+#  # 대기 시간 초과 처리
+#  if [ "$ELAPSED_TIME" -ge "$WAIT_TIMEOUT" ]; then
+#    echo "Timeout while waiting for Pods with label $LABEL to be ready. Deleting release..."
+#    helm uninstall "$RELEASE_NAME"
+#    echo "Release deleted due to timeout."
+#    exit 1
+#  fi
+#
+#  # 대기
+#  echo "Waiting for Pods with label $LABEL to be ready... ($ELAPSED_TIME/$WAIT_TIMEOUT seconds elapsed)"
+#  sleep "$INTERVAL"
+#  ELAPSED_TIME=$((ELAPSED_TIME + INTERVAL))
+#done
 
-while true; do
-  # 특정 라벨을 가진 Pod의 Ready 상태 확인
-  READY_COUNT=$(kubectl get pods --selector "$LABEL" --field-selector=status.phase=Running \
-    -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' | grep -c "True")
-  TOTAL_COUNT=$(kubectl get pods --selector "$LABEL" --no-headers 2>/dev/null | wc -l)
-
-  # 모든 Pod가 준비되었는지 확인
-  if [ "$READY_COUNT" -eq "$TOTAL_COUNT" ] && [ "$TOTAL_COUNT" -gt 0 ]; then
-    echo "All Pods with label $LABEL are ready."
-    break
-  fi
-
-  # 대기 시간 초과 처리
-  if [ "$ELAPSED_TIME" -ge "$WAIT_TIMEOUT" ]; then
-    echo "Timeout while waiting for Pods with label $LABEL to be ready. Deleting release..."
-    helm uninstall "$RELEASE_NAME"
-    echo "Release deleted due to timeout."
-    exit 1
-  fi
-
-  # 대기
-  echo "Waiting for Pods with label $LABEL to be ready... ($ELAPSED_TIME/$WAIT_TIMEOUT seconds elapsed)"
-  sleep "$INTERVAL"
-  ELAPSED_TIME=$((ELAPSED_TIME + INTERVAL))
-done
-
-echo "Helm installation and resource readiness check completed successfully."
+#echo "Helm installation and resource readiness check completed successfully."

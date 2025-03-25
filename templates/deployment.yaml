@@ -19,19 +19,51 @@ spec:
       {{- end }}
       initContainers:
       - name: setup-nfs-path
-        image: alpine:latest
+        image: busybox:latest
         command:
         - /bin/sh
         - -c
         - |
-          mkdir -p /output/{{ .Values.name }}
+          
+          mkdir -p /NFS/ComfyUI-Workspaces/{{ .Values.name }}
+          # 없는 경우에만 복사
+          if [ ! -d "/NFS/ComfyUI-Workspaces/{{ .Values.name }}/ComfyUI" ]; then
+            SIZE=$(du -hs /NFS/ComfyUI-Base | cut -f1)
+            echo "[INFO] Copying ComfyUI-Base Data... (Size: ${SIZE})"
+            cp -ar /NFS/ComfyUI-Base /NFS/ComfyUI-Workspaces/{{ .Values.name }}/ComfyUI
+            echo "[INFO] Copying ComfyUI-Base Done."
+          else
+            echo "[INFO] ComfyUI directory already exists. Skipping copy."
+          fi
         volumeMounts:
-          - name: cui-output
-            mountPath: /output
+          - name: cui-nfs
+            mountPath: /NFS
       containers:
       - name: comfyui-{{ .Values.name }}-ctr
+        {{ if .Values.isOffline }}
+        image: acryl-comfyui:v1.0
+        command:
+          - /bin/bash
+          - -c
+          - |
+            echo "########################################"
+            echo "[INFO] Starting ComfyUI..."
+            echo "########################################"
+    
+            export PYTHONPYCACHEPREFIX="/comfyui-home/ComfyUI/.cache/pycache"
+            export PIP_USER=true
+            export PATH="${PATH}:/comfyui-home/ComfyUI/.local/bin"
+            export PIP_ROOT_USER_ACTION=ignore
+    
+            cd /comfyui-home/ComfyUI
+            pip install -r requirements.txt
+            python3 ./main.py --listen --port 8188 ${CLI_ARGS}
+            sleep infinity
+
+        {{- else }}
         image: yanwk/comfyui-boot:cu124-megapak
-        command: ["/bin/sh", "-c", "sh /runner-scripts/entrypoint.sh; sleep infinity"] 
+        command: ["/bin/sh", "-c", "sh /runner-scripts/entrypoint.sh; sleep infinity"] # Online
+        {{- end }}
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 8188
@@ -40,13 +72,14 @@ spec:
             nvidia.com/gpu: 1
           limits:
             nvidia.com/gpu: 1
-        env:
-        - name: CLI_ARGS
-          value: "--output=/output"
+            #        env:
+                #- name: CLI_ARGS
+          #          value: "--output=/output"
         volumeMounts:
-        - name: cui-output
-          mountPath: /output
+        - name: cui-nfs
+          mountPath: /comfyui-home
+          subPath: ComfyUI-Workspaces/{{ .Values.name }}
       volumes:
-      - name: cui-output
+      - name: cui-nfs
         persistentVolumeClaim:
-          claimName: cui-output-{{ .Values.name }}-pvc
+          claimName: cui-nfs-{{ .Values.name }}-pvc
