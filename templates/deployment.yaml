@@ -4,7 +4,7 @@ metadata:
   name: comfyui-{{ .Values.name }}
   namespace: {{ .Values.namespace | default "default" | quote }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replica | default 1 }}
   selector:
     matchLabels:
       app: comfyui-{{ .Values.name }}
@@ -24,17 +24,32 @@ spec:
         - /bin/sh
         - -c
         - |
-          
-          mkdir -p /NFS/ComfyUI-Workspaces/{{ .Values.name }}
-          # 없는 경우에만 복사
-          if [ ! -d "/NFS/ComfyUI-Workspaces/{{ .Values.name }}/ComfyUI" ]; then
-            SIZE=$(du -hs /NFS/ComfyUI-Base | cut -f1)
-            echo "[INFO] Copying ComfyUI-Base Data... (Size: ${SIZE})"
-            cp -ar /NFS/ComfyUI-Base /NFS/ComfyUI-Workspaces/{{ .Values.name }}/ComfyUI
-            echo "[INFO] Copying ComfyUI-Base Done."
+          BASE_DIR="/NFS/ComfyUI-Workspaces"
+          NAME="{{ .Values.name }}"
+          OVERWRITE="{{ .Values.overwrite | default "false" }}"
+
+          # admin(base) 디렉토리 확인
+          if [ ! -d "${BASE_DIR}/admin" ]; then
+            echo "[ERROR] ComfyUI admin directory does not exist!"
+            exit 1
+          fi
+
+          # 사용자 디렉토리 생성
+          mkdir -p "${BASE_DIR}/${NAME}"
+
+          # name이 'admin'이면 복사 불필요
+          if [ "$NAME" = "admin" ]; then
+            echo "[INFO] 'admin' workspace detected. Skipping base copy."
+          elif [ ! -d "${BASE_DIR}/${NAME}/ComfyUI" ] || [ "$OVERWRITE" = "true" ]; then
+            rm -rf "${BASE_DIR}/${NAME}/ComfyUI" > /dev/null 2>&1
+            SIZE=$(du -hs "${BASE_DIR}/admin/ComfyUI" | cut -f1)
+            echo "[INFO] Copying ComfyUI base directory (admin)... (Size: ${SIZE})"
+            cp -ar "${BASE_DIR}/admin/ComfyUI" "${BASE_DIR}/${NAME}/ComfyUI"
+            echo "[INFO] Copying ComfyUI base directory done."
           else
             echo "[INFO] ComfyUI directory already exists. Skipping copy."
           fi
+
         volumeMounts:
           - name: cui-nfs
             mountPath: /NFS
@@ -56,6 +71,9 @@ spec:
             export PIP_ROOT_USER_ACTION=ignore
     
             cd /comfyui-home/ComfyUI
+
+            /utils/patch_server.sh ./server.py {{ .Values.name }}  # ingress 접속 방식을 위해 frontend href 변경
+
             pip install -r requirements.txt
             python3 ./main.py --listen --port 8188 ${CLI_ARGS}
             sleep infinity
@@ -67,6 +85,29 @@ spec:
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 8188
+        startupProbe:
+          httpGet:
+            path: /
+            port: 8188
+          failureThreshold: 60   # 총 10분 동안 기다려줌 (60 * 10s)
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8188
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8188
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
         resources:
           requests:
             nvidia.com/gpu: 1
@@ -79,6 +120,9 @@ spec:
         - name: cui-nfs
           mountPath: /comfyui-home
           subPath: ComfyUI-Workspaces/{{ .Values.name }}
+        - name: cui-nfs
+          mountPath: /utils
+          subPath: utils
       volumes:
       - name: cui-nfs
         persistentVolumeClaim:

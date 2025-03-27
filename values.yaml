@@ -1,9 +1,11 @@
 name: 
 nodeName:
 namespace: default
+replica:
 storageSize:
 nodePort:
 nfs:
   server: 192.168.0.18
   path: /NFS  # 자동으로 해당 경로 아래에 .Values.name 기반으로 폴더 생성함
 isOffline: true
+overwrite: false  # admin 데이터덮어쓰기

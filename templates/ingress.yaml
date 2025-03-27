@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: comfyui-{{ .Values.name }}-ingress
+  namespace: {{ .Values.namespace | default "default" }}
+  annotations:
+    konghq.com/strip-path: "true"  # /<name> 부분 제거하고 전달
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          - path: /{{ .Values.name }}
+            pathType: Prefix
+            backend:
+              service:
+                name: comfyui-{{ .Values.name }}-svc
+                port:
+                  number: 8188
