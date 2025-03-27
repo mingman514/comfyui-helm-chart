@@ -74,7 +74,7 @@ if [[ -z "${ACRYL_SOURCED_COMMON_UTILS}" ]]; then
       local spinstr='|/-\'
       while true; do
         for (( i=0; i<${#spinstr}; i++ )); do
-          echo -ne "${CYAN}[INFO] Installing... ${spinstr:$i:1}${RESET}\r"
+          echo -ne "${CYAN}[INFO] Installing... ${spinstr:$i:1} ${RESET}\r"
           sleep $delay
         done
       done

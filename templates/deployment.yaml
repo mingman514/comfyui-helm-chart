@@ -72,8 +72,7 @@ spec:
     
             cd /comfyui-home/ComfyUI
 
-            /utils/patch_server.sh ./server.py {{ .Values.name }}  # ingress 접속 방식을 위해 frontend href 변경
-
+            #/utils/patch_server.sh ./server.py {{ .Values.name }}  # ingress 접속 방식을 위해 frontend href 변경
             pip install -r requirements.txt
             python3 ./main.py --listen --port 8188 ${CLI_ARGS}
             sleep infinity

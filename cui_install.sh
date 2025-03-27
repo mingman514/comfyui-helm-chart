@@ -9,14 +9,17 @@ function print_help() {
   cecho "Usage: $0 <name> --set nodePort=<nodePort> [additional --set options...]\n" $WHITE
   cecho "Required parameters:" $CYAN
   cecho "  <name>                     Name for the deployment and Helm release (e.g., username or department)" $WHITE
-  cecho "  --set nodePort=<port>      NodePort for the service (30000~32767, must not overlap)" $WHITE
   echo ""
   cecho "Optional parameters:" $CYAN
-  cecho "  --set nodeName=<node>             Kubernetes node to deploy to (default: any node)" $WHITE
-  cecho "  --set storageSize=<size>          PVC size (default: 30G)" $WHITE
+  cecho "  --set nodePort=<port>      NodePort for the service (30000~32767, must not overlap)" $WHITE
+  cecho "  --set nodeName=<node>      Kubernetes node to deploy to (default: any node)" $WHITE
+  cecho "  --set storageSize=<size>   PVC size (default: 30G)" $WHITE
+  cecho "  --set replica=<number>     Set the number of replica (default: 1) " $WHITE
   echo ""
   cecho "Example:" $CYAN
-  cecho "  $0 example-user --set nodePort=30001 --set nodeName=node1 --set storageSize=50G" $WHITE
+  cecho "  $0 example-user" $WHITE
+  cecho "  $0 example-user --set nodePort=30001 --set nodeName=cui-worker-1" $WHITE
+  cecho "  $0 example-user --set replica=3" $WHITE
   echo ""
 }
 
@@ -29,7 +32,7 @@ function cleanup_on_failure() {
 }
 
 # 시그널 트랩 등록
-trap cleanup_on_failure INT TERM ERR
+trap cleanup_on_failure TERM ERR
 
 # 글로벌 변수로 PID 저장
 SPINNER_PID=""
@@ -51,7 +54,7 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
 fi
 
 # 필수 인자 확인
-if [ $# -lt 2 ]; then
+if [ $# -lt 1 ]; then
   error "Missing required parameters."
   cecho "Use $0 --help for usage information." $WHITE
   exit 1
@@ -119,6 +122,22 @@ fi
 
 
 # 성공 시 트랩 해제
-trap - INT TERM ERR
+trap - TERM ERR
+
+# nodePort 조회
+SERVICE_NAME="comfyui-$NAME-svc"
+NODE_PORT=$(kubectl get svc "$SERVICE_NAME" -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
+
+# 노드 IP 조회 (첫 번째 Ready 노드 기준)
+NODE_IP=$(kubectl get nodes -owide --no-headers | awk '$2 == "Ready" {print $6; exit}')
+
+echo ""
+
+if [[ -n "$NODE_PORT" && -n "$NODE_IP" ]]; then
+  headline "������ Access URL"
+  cecho "  → http://$NODE_IP:$NODE_PORT" $CYAN
+else
+  warn "Could not determine access URL. Make sure the service and node are available."
+fi
 
 success "������ Helm release '$NAME' installed successfully!"
