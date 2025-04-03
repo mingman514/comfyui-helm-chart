@@ -84,7 +84,7 @@ if [[ -z "${ACRYL_SOURCED_COMMON_UTILS}" ]]; then
       if kill "$1" > /dev/null 2>&1; then
         wait "$1" 2>/dev/null
         # 줄을 지우고 OK 메시지 출력
-        echo -ne "\r\033[K${GREEN}[OK] Installation complete!${RESET}\n"
+        echo -ne "\n\n\r\033[K${GREEN}[OK] Installation complete!${RESET}\n"
       fi
     } 
 else

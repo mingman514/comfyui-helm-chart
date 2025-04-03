@@ -38,7 +38,7 @@ info "Helm uninstall command issued."
 
 # PVC/PV 삭제 대기
 info "Waiting for volumes to be deleted..."
-TIMEOUT=60
+TIMEOUT=120
 ELAPSED=0
 
 while kubectl get pvc "$PVC_NAME" -n "$NAMESPACE" > /dev/null 2>&1 || kubectl get pv | grep -q "$PVC_NAME"; do
@@ -51,4 +51,4 @@ while kubectl get pvc "$PVC_NAME" -n "$NAMESPACE" > /dev/null 2>&1 || kubectl ge
   ELAPSED=$((ELAPSED + 1))
 done
 
-success "✅ Volume cleanup complete!"
+success "\n\n✅ Volume cleanup complete!"

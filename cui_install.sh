@@ -79,7 +79,7 @@ if helm status "$NAME" > /dev/null 2>&1; then
       helm uninstall "$NAME"
 
       info "Waiting for volume cleanup..."
-      TIMEOUT=60
+      TIMEOUT=120
       ELAPSED=0
 
       while kubectl get pvc "$PVC_NAME" -n "$NAMESPACE" > /dev/null 2>&1 || kubectl get pv | grep -q "$PVC_NAME"; do
@@ -108,7 +108,7 @@ start_spinner &
 SPINNER_PID=$!
 
 # Helm 설치 실행
-helm install --wait "$NAME" . $SET_NAME "$@"
+helm install --wait "$NAME" $SCRIPT_DIR $SET_NAME "$@"
 INSTALL_EXIT_CODE=$?
 
 # 스피너 멈춤
