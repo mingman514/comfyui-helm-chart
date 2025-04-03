@@ -6,22 +6,27 @@ source "$SCRIPT_DIR/common_utils.sh"
 
 # 도움말 출력 함수
 function print_help() {
-  cecho "Usage: $0 <name> --set nodePort=<nodePort> [additional --set options...]\n" $WHITE
+  cecho "Usage: cui_install.sh <name> --set key=value [additional --set options...]\n" $WHITE
   cecho "Required parameters:" $CYAN
-  cecho "  <name>                     Name for the deployment and Helm release (e.g., username or department)" $WHITE
+  cecho "  <name>                        Name for the deployment and Helm release (e.g., username or department)" $WHITE
   echo ""
-  cecho "Optional parameters:" $CYAN
-  cecho "  --set nodePort=<port>      NodePort for the service (30000~32767, must not overlap)" $WHITE
-  cecho "  --set nodeName=<node>      Kubernetes node to deploy to (default: any node)" $WHITE
-  cecho "  --set storageSize=<size>   PVC size (default: 30G)" $WHITE
-  cecho "  --set replica=<number>     Set the number of replica (default: 1) " $WHITE
+  cecho "Optional --set parameters:" $CYAN
+  cecho "  nodePort=<port>               NodePort for the service (30000~32767, must not overlap)" $WHITE
+  cecho "  nodeName=<node>               Specific Kubernetes node to deploy the pod (default: any available node)" $WHITE
+  cecho "  namespace=<namespace>         Kubernetes namespace to install into (default: default)" $WHITE
+  cecho "  replica=<number>              Number of pod replicas to launch (default: 1)" $WHITE
+  cecho "  storageSize=<size>            Persistent volume size (e.g., 30Gi, default: 30Gi)" $WHITE
+  cecho "  isOffline=<true|false>        Whether to run in offline mode (default: true)" $WHITE
+  cecho "  overwrite=<true|false>        If true, overwrite existing user data with admin's data regardless of existence" $WHITE
   echo ""
   cecho "Example:" $CYAN
-  cecho "  $0 example-user" $WHITE
-  cecho "  $0 example-user --set nodePort=30001 --set nodeName=cui-worker-1" $WHITE
-  cecho "  $0 example-user --set replica=3" $WHITE
+  cecho "  cui_install.sh example-user" $WHITE
+  cecho "  cui_install.sh example-user --set nodePort=30001 --set nodeName=cui-worker-1" $WHITE
+  cecho "  cui_install.sh example-user --set replica=3 --set isOffline=false" $WHITE
+  cecho "  cui_install.sh example-user --set overwrite=true" $WHITE
   echo ""
 }
+
 
 # 실패/중단 시 자동 Helm uninstall
 function cleanup_on_failure() {
@@ -48,10 +53,13 @@ cleanup_spinner_on_exit() {
 trap cleanup_spinner_on_exit EXIT
 
 # --help 옵션 처리
-if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-  print_help
-  exit 0
-fi
+# --help 옵션 처리 (인자가 중간에 있어도 작동하도록)
+for arg in "$@"; do
+  if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
+    print_help
+    exit 0
+  fi
+done
 
 # 필수 인자 확인
 if [ $# -lt 1 ]; then
@@ -108,7 +116,7 @@ start_spinner &
 SPINNER_PID=$!
 
 # Helm 설치 실행
-helm install --wait "$NAME" $SCRIPT_DIR $SET_NAME "$@"
+helm install --wait --timeout 30m "$NAME" $SCRIPT_DIR $SET_NAME "$@"
 INSTALL_EXIT_CODE=$?
 
 # 스피너 멈춤
